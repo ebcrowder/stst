@@ -24,7 +24,7 @@ func GetSessionToken(c context.Context, api STSGetSessionTokenAPI, input *sts.Ge
 	return api.GetSessionToken(c, input)
 }
 
-func generateCredentialsText(err error, CredentialsFile string, temporaryCredentials string) []string {
+func generateCredentialsText(CredentialsFile string, temporaryCredentials string) []string {
 	file, err := os.Open(CredentialsFile)
 	if err != nil {
 		panic("Could not open aws credentials file:" + err.Error())
@@ -39,10 +39,6 @@ func generateCredentialsText(err error, CredentialsFile string, temporaryCredent
 	for i, line := range lines {
 		if strings.Contains(line, "[temp]") {
 			lines[i] = temporaryCredentials
-		} else {
-			if i == len(lines)-1 {
-				lines[i] = temporaryCredentials
-			}
 		}
 	}
 	return lines
@@ -86,7 +82,7 @@ func main() {
 	}
 
 	temporaryCredentials := generateTemporaryCredentials(response)
-	lines := generateCredentialsText(err, CredentialsFile, temporaryCredentials)
+	lines := generateCredentialsText(CredentialsFile, temporaryCredentials)
 	output := strings.Join(lines, "\n")
 
 	err = ioutil.WriteFile(CredentialsFile, []byte(output), 0644)
