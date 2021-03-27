@@ -30,7 +30,7 @@ func (dt STSGetSessionTokenImpl) GetSessionToken(ctx context.Context,
 	return output, nil
 }
 
-func TestGetSessionToken(t *testing.T) {
+func TestMockGetSessionToken(t *testing.T) {
 	api := &STSGetSessionTokenImpl{}
 
 	input := &sts.GetSessionTokenInput{

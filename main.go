@@ -59,7 +59,7 @@ func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
 	return temporaryCredentials
 }
 
-func findConfigValue(path, value string) string {
+func findValueInFile(path, value string) string {
 	var match string
 	input := openAndReadFile(path)
 	lines := strings.Split(string(input), "\n")
@@ -70,51 +70,69 @@ func findConfigValue(path, value string) string {
 			match = s[1]
 		}
 	}
-
-	if len(match) == 0 {
-		panic("Could not locate value in aws config file:" + value)
-	}
-
 	return match
 }
 
 func getTokenCodeFromStdIn() string {
 	reader := bufio.NewReader(os.Stdin)
-
 	fmt.Print("Please enter your 2FA Code: ")
-
-	TokenCode, _ := reader.ReadString('\n')
-	TokenCode = strings.TrimSuffix(TokenCode, "\n")
-	return TokenCode
+	tokenCode, _ := reader.ReadString('\n')
+	tokenCode = strings.TrimSuffix(tokenCode, "\n")
+	return tokenCode
 }
 
 func main() {
+	// parse command line args and set defaults
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
 		panic("User home directory could not be determined:, " + err.Error())
 	}
 	awsDir := userHomeDir + "/.aws/"
-	var credentialsFile = flag.String("credentials", awsDir+"credentials", "Path to aws credentials file")
-	var configFile = flag.String("config", awsDir+"config", "Path to aws config file")
-	var durationSeconds = flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid")
+	credentialsFile := flag.String("credentials", awsDir+"credentials", "Path to aws credentials file")
+	configFile := flag.String("config", awsDir+"config", "Path to aws config file")
+	durationSeconds := flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid")
 	flag.Parse()
 
-	SerialNumber := findConfigValue(*configFile, "mfa_serial")
-	Region := findConfigValue(*configFile, "region")
-
-	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(Region))
-	if err != nil {
-		panic("Configuration error, " + err.Error())
+	// obtain required values from AWS config file
+	mfaSerial := findValueInFile(*configFile, "mfa_serial")
+	region := findValueInFile(*configFile, "region")
+	if len(mfaSerial) == 0 || len(region) == 0 {
+		panic("Could not locate mfa_serial and/or region in aws config file:")
+	}
+	// check for existing expiration value
+	// if temporary credentials have expired, fetch 2FA code from stdin
+	// otherwise, print that the credentials have not expired and exit
+	var tokenCode string
+	expiration := findValueInFile(*credentialsFile, "aws_token_expiration")
+	if len(expiration) > 0 {
+		now := time.Now()
+		parsedExpiration, err := time.Parse(time.RFC3339, expiration)
+		if err != nil {
+			panic("Error parsing expiration:, " + err.Error())
+		}
+		if now.After(parsedExpiration) {
+			tokenCode = getTokenCodeFromStdIn()
+		} else {
+			fmt.Print("Temporary credentials have not expired and remain valid.")
+			return
+		}
+	} else {
+		tokenCode = getTokenCodeFromStdIn()
 	}
 
+	// init AWS SDK config and sts client
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+	if err != nil {
+		panic("AWS SDK configuration error:, " + err.Error())
+	}
 	client := sts.NewFromConfig(cfg)
 
-	TokenCode := getTokenCodeFromStdIn()
-
+	// get session token and update the credentials file
+	// with the temporary credentials
 	response, err := GetSessionToken(context.Background(), client, &sts.GetSessionTokenInput{
 		DurationSeconds: aws.Int32(int32(*durationSeconds)),
-		SerialNumber:    aws.String(SerialNumber),
-		TokenCode:       aws.String(TokenCode),
+		SerialNumber:    aws.String(mfaSerial),
+		TokenCode:       aws.String(tokenCode),
 	})
 	if err != nil {
 		panic("Could not get session token:" + err.Error())
