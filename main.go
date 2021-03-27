@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -21,6 +22,39 @@ type STSGetSessionTokenAPI interface {
 
 func GetSessionToken(c context.Context, api STSGetSessionTokenAPI, input *sts.GetSessionTokenInput) (*sts.GetSessionTokenOutput, error) {
 	return api.GetSessionToken(c, input)
+}
+
+func generateCredentialsText(err error, CredentialsFile string, temporaryCredentials string) []string {
+	file, err := os.Open(CredentialsFile)
+	if err != nil {
+		panic("Could not open aws credentials file:" + err.Error())
+	}
+	defer file.Close()
+	input, err := ioutil.ReadAll(file)
+	if err != nil {
+		panic("Could not open aws credentials file:" + err.Error())
+	}
+	lines := strings.Split(string(input), "\n")
+
+	for i, line := range lines {
+		if strings.Contains(line, "[temp]") {
+			lines[i] = temporaryCredentials
+		} else {
+			if i == len(lines)-1 {
+				lines[i] = temporaryCredentials
+			}
+		}
+	}
+	return lines
+}
+
+func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
+	temporaryCredentials := "[temp]\n" +
+		"aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" +
+		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
+		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
+		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339) + "\n"
+	return temporaryCredentials
 }
 
 func main() {
@@ -51,30 +85,10 @@ func main() {
 		panic("Could not get session token:" + err.Error())
 	}
 
-	file, err := os.Open(CredentialsFile)
-	if err != nil {
-		panic("Could not open aws credentials file:" + err.Error())
-	}
-	defer file.Close()
-
-	input, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic("Could not open aws credentials file:" + err.Error())
-	}
-
-	lines := strings.Split(string(input), "\n")
-
-	for i, line := range lines {
-		if strings.Contains(line, "[development]") {
-			lines[i] = "[development]\n" + "aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" + "aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" + "aws_security_token" + " = " + *response.Credentials.SessionToken + "\n"
-		} else {
-			if i == len(lines)-1 {
-				lines[i] = "[development]\n" + "aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" + "aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" + "aws_security_token" + " = " + *response.Credentials.SessionToken + "\n"
-			}
-		}
-	}
-
+	temporaryCredentials := generateTemporaryCredentials(response)
+	lines := generateCredentialsText(err, CredentialsFile, temporaryCredentials)
 	output := strings.Join(lines, "\n")
+
 	err = ioutil.WriteFile(CredentialsFile, []byte(output), 0644)
 	if err != nil {
 		panic("Could not write to aws credentials file:" + err.Error())
