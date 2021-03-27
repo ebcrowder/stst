@@ -91,7 +91,7 @@ func getTokenCodeFromStdIn() string {
 func main() {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
-		panic("User home directory could not be determined, " + err.Error())
+		panic("User home directory could not be determined:, " + err.Error())
 	}
 	awsDir := userHomeDir + "/.aws/"
 	var credentialsFile = flag.String("credentials", awsDir+"credentials", "Path to aws credentials file")
