@@ -30,7 +30,7 @@ func (dt STSGetSessionTokenImpl) GetSessionToken(ctx context.Context,
 	return output, nil
 }
 
-func TestMockGetSessionToken(t *testing.T) {
+func callMockSTS() (*sts.GetSessionTokenOutput, error) {
 	api := &STSGetSessionTokenImpl{}
 
 	input := &sts.GetSessionTokenInput{
@@ -39,13 +39,39 @@ func TestMockGetSessionToken(t *testing.T) {
 		TokenCode:       aws.String("123456"),
 	}
 
-	resp, err := GetSessionToken(context.Background(), api, input)
+	response, err := GetSessionToken(context.Background(), api, input)
+	if err != nil {
+		return nil, err
+	}
+	return response, nil
+}
+
+func TestMockGetSessionToken(t *testing.T) {
+	response, err := callMockSTS()
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Log("SessionToken:      " + *resp.Credentials.SessionToken)
-	t.Log("SecretAccessKey:  " + *resp.Credentials.SecretAccessKey)
-	t.Log("AccessKeyId:  " + *resp.Credentials.AccessKeyId)
-	t.Log("Expiration:  " + resp.Credentials.Expiration.Format(time.RFC3339))
+	t.Log("SessionToken:      " + *response.Credentials.SessionToken)
+	t.Log("SecretAccessKey:  " + *response.Credentials.SecretAccessKey)
+	t.Log("AccessKeyId:  " + *response.Credentials.AccessKeyId)
+	t.Log("Expiration:  " + response.Credentials.Expiration.Format(time.RFC3339))
+}
+
+func TestGenerateTemporaryCredentials(t *testing.T) {
+	response, err := callMockSTS()
+	if err != nil {
+		t.Error(err)
+	}
+
+	got := generateTemporaryCredentials(response)
+	want := "[temp]\n" +
+		"aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" +
+		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
+		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
+		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339)
+
+	if got != want {
+		t.Errorf("got %s; want %s", got, want)
+	}
 }

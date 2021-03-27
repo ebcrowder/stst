@@ -15,6 +15,22 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
+type AWSConfig struct {
+	mfaSerial string
+	region    string
+}
+
+func (c *AWSConfig) initConfigValues(configFile *string) {
+	mfaSerial := findValueInFile(*configFile, "mfa_serial")
+	region := findValueInFile(*configFile, "region")
+	c.mfaSerial = mfaSerial
+	c.region = region
+	if len(c.mfaSerial) == 0 || len(c.region) == 0 {
+		panic("Could not locate mfa_serial and/or region in aws config file:")
+	}
+
+}
+
 type STSGetSessionTokenAPI interface {
 	GetSessionToken(ctx context.Context,
 		params *sts.GetSessionTokenInput,
@@ -44,6 +60,7 @@ func generateCredentialsText(path, temporaryCredentials string) []string {
 
 	for i, line := range lines {
 		if strings.Contains(line, "[temp]") {
+			lines[i] = ""
 			lines[i] = temporaryCredentials
 		}
 	}
@@ -94,11 +111,9 @@ func main() {
 	flag.Parse()
 
 	// obtain required values from AWS config file
-	mfaSerial := findValueInFile(*configFile, "mfa_serial")
-	region := findValueInFile(*configFile, "region")
-	if len(mfaSerial) == 0 || len(region) == 0 {
-		panic("Could not locate mfa_serial and/or region in aws config file:")
-	}
+	awsConfig := AWSConfig{}
+	awsConfig.initConfigValues(configFile)
+
 	// check for existing expiration value
 	// if temporary credentials have expired, fetch 2FA code from stdin
 	// otherwise, print that the credentials have not expired and exit
@@ -121,7 +136,7 @@ func main() {
 	}
 
 	// init AWS SDK config and sts client
-	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(region))
+	cfg, err := config.LoadDefaultConfig(context.Background(), config.WithRegion(awsConfig.region))
 	if err != nil {
 		panic("AWS SDK configuration error:, " + err.Error())
 	}
@@ -131,7 +146,7 @@ func main() {
 	// with the temporary credentials
 	response, err := GetSessionToken(context.Background(), client, &sts.GetSessionTokenInput{
 		DurationSeconds: aws.Int32(int32(*durationSeconds)),
-		SerialNumber:    aws.String(mfaSerial),
+		SerialNumber:    aws.String(awsConfig.mfaSerial),
 		TokenCode:       aws.String(tokenCode),
 	})
 	if err != nil {
