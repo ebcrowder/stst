@@ -111,7 +111,7 @@ func main() {
 
 	TokenCode := getTokenCodeFromStdIn()
 
-	response, err := GetSessionToken(context.TODO(), client, &sts.GetSessionTokenInput{
+	response, err := GetSessionToken(context.Background(), client, &sts.GetSessionTokenInput{
 		DurationSeconds: aws.Int32(int32(*durationSeconds)),
 		SerialNumber:    aws.String(SerialNumber),
 		TokenCode:       aws.String(TokenCode),
