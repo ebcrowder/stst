@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -88,11 +89,18 @@ func getTokenCodeFromStdIn() string {
 }
 
 func main() {
-	CredentialsFile := os.Getenv("CREDENTIALS_FILE") // TODO set as default - command line args?
-	ConfigFile := os.Getenv("CONFIG_FILE")           // TODO set as default - command line args?
-	var DurationSeconds int32 = 900                  // TODO handle default somehow - command line args?
-	SerialNumber := findConfigValue(ConfigFile, "mfa_serial")
-	Region := findConfigValue(ConfigFile, "region")
+	userHomeDir, err := os.UserHomeDir()
+	if err != nil {
+		panic("User home directory could not be determined, " + err.Error())
+	}
+	awsDir := userHomeDir + "/.aws/"
+	var credentialsFile = flag.String("credentials", awsDir+"credentials", "Path to aws credentials file")
+	var configFile = flag.String("config", awsDir+"config", "Path to aws config file")
+	var durationSeconds = flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid")
+	flag.Parse()
+
+	SerialNumber := findConfigValue(*configFile, "mfa_serial")
+	Region := findConfigValue(*configFile, "region")
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(Region))
 	if err != nil {
@@ -104,7 +112,7 @@ func main() {
 	TokenCode := getTokenCodeFromStdIn()
 
 	response, err := GetSessionToken(context.TODO(), client, &sts.GetSessionTokenInput{
-		DurationSeconds: aws.Int32(DurationSeconds),
+		DurationSeconds: aws.Int32(int32(*durationSeconds)),
 		SerialNumber:    aws.String(SerialNumber),
 		TokenCode:       aws.String(TokenCode),
 	})
@@ -113,10 +121,10 @@ func main() {
 	}
 
 	temporaryCredentials := generateTemporaryCredentials(response)
-	lines := generateCredentialsText(CredentialsFile, temporaryCredentials)
+	lines := generateCredentialsText(*credentialsFile, temporaryCredentials)
 	output := strings.Join(lines, "\n")
 
-	err = ioutil.WriteFile(CredentialsFile, []byte(output), 0644)
+	err = ioutil.WriteFile(*credentialsFile, []byte(output), 0644)
 	if err != nil {
 		panic("Could not write to aws credentials file:" + err.Error())
 	}
