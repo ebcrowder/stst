@@ -59,24 +59,6 @@ func TestMockGetSessionToken(t *testing.T) {
 	t.Log("Expiration:  " + response.Credentials.Expiration.Format(time.RFC3339))
 }
 
-func TestGenerateTemporaryCredentials(t *testing.T) {
-	response, err := callMockSTS()
-	if err != nil {
-		t.Error(err)
-	}
-
-	got := generateTemporaryCredentials(response)
-	want := "[temp]\n" +
-		"aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" +
-		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
-		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
-		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339)
-
-	if got != want {
-		t.Errorf("got %s; want %s", got, want)
-	}
-}
-
 func TestGenerateCredentialsText(t *testing.T) {
 	response, err := callMockSTS()
 	if err != nil {
@@ -93,11 +75,13 @@ func TestGenerateCredentialsText(t *testing.T) {
 		"[default]",
 		"aws_access_key_id = accessKeyId",
 		"aws_secret_access_key = secretAccessKey",
+		"",
 		"[temp]",
 		"aws_access_key_id = accessKeyId",
 		"aws_secret_access_key = secretAccessKey",
 		"aws_security_token = sessionToken",
 		"aws_token_expiration = 2020-01-01T00:00:00Z",
+		"",
 	}
 
 	credentialsText := generateCredentialsText(lines, response)

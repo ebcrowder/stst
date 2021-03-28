@@ -1,4 +1,4 @@
-module github.com/ebcrowder/aws-mfa/v2
+module github.com/ebcrowder/stst/v2
 
 go 1.15
 

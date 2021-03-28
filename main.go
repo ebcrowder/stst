@@ -75,6 +75,7 @@ func generateCredentialsText(lines []string, response *sts.GetSessionTokenOutput
 	} else {
 		// otherwise set the credentials
 		updatedLines = append(updatedLines, lines...)
+		updatedLines = append(updatedLines, "")
 		updatedLines = append(updatedLines, temporaryCredentials)
 	}
 	return updatedLines
@@ -85,7 +86,7 @@ func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
 		"aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" +
 		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
 		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
-		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339)
+		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339) + "\n"
 	return temporaryCredentials
 }
 
