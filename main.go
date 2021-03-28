@@ -57,14 +57,31 @@ func openAndReadFile(path string) []byte {
 func generateCredentialsText(path, temporaryCredentials string) []string {
 	input := openAndReadFile(path)
 	lines := strings.Split(string(input), "\n")
+	updatedLines := make([]string, 0)
+	existingCredentialsIndex := 0
 
+	// check for existing credentials
 	for i, line := range lines {
 		if strings.Contains(line, "[temp]") {
-			lines[i] = ""
-			lines[i] = temporaryCredentials
+			existingCredentialsIndex = i
 		}
 	}
-	return lines
+
+	// if the credentials exist, replace them entirely
+	if existingCredentialsIndex != 0 {
+		for i, line := range lines {
+			if i <= existingCredentialsIndex {
+				updatedLines = append(updatedLines, line)
+			}
+		}
+		updatedLines[existingCredentialsIndex] = temporaryCredentials
+	} else {
+		// otherwise set them
+		updatedLines = append(updatedLines, lines...)
+		updatedLines = append(updatedLines, temporaryCredentials)
+	}
+
+	return updatedLines
 }
 
 func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
