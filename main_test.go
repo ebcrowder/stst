@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ func (dt STSGetSessionTokenImpl) GetSessionToken(ctx context.Context,
 		AccessKeyId:     aws.String("accessKeyId"),
 		SecretAccessKey: aws.String("secretAccessKey"),
 		SessionToken:    aws.String("sessionToken"),
-		Expiration:      aws.Time(time.Now()),
+		Expiration:      aws.Time(time.Date(2020, 01, 01, 00, 00, 00, 00, time.UTC)),
 	}
 
 	output := &sts.GetSessionTokenOutput{
@@ -70,6 +71,39 @@ func TestGenerateTemporaryCredentials(t *testing.T) {
 		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
 		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
 		"aws_token_expiration" + " = " + response.Credentials.Expiration.Format(time.RFC3339)
+
+	if got != want {
+		t.Errorf("got %s; want %s", got, want)
+	}
+}
+
+func TestGenerateCredentialsText(t *testing.T) {
+	response, err := callMockSTS()
+	if err != nil {
+		t.Error(err)
+	}
+
+	lines := []string{
+		"[default]",
+		"aws_access_key_id = accessKeyId",
+		"aws_secret_access_key = secretAccessKey",
+	}
+
+	wantedLines := []string{
+		"[default]",
+		"aws_access_key_id = accessKeyId",
+		"aws_secret_access_key = secretAccessKey",
+		"[temp]",
+		"aws_access_key_id = accessKeyId",
+		"aws_secret_access_key = secretAccessKey",
+		"aws_security_token = sessionToken",
+		"aws_token_expiration = 2020-01-01T00:00:00Z",
+	}
+
+	credentialsText := generateCredentialsText(lines, response)
+
+	got := strings.Join(credentialsText, "\n")
+	want := strings.Join(wantedLines, "\n")
 
 	if got != want {
 		t.Errorf("got %s; want %s", got, want)

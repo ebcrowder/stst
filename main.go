@@ -20,15 +20,14 @@ type AWSConfig struct {
 	region    string
 }
 
-func (c *AWSConfig) initConfigValues(configFile *string) {
-	mfaSerial := findValueInFile(*configFile, "mfa_serial")
-	region := findValueInFile(*configFile, "region")
+func (c *AWSConfig) initConfigValues(awsConfigLines []string) {
+	mfaSerial := findValueInFile(awsConfigLines, "mfa_serial")
+	region := findValueInFile(awsConfigLines, "region")
 	c.mfaSerial = mfaSerial
 	c.region = region
 	if len(c.mfaSerial) == 0 || len(c.region) == 0 {
 		panic("Could not locate mfa_serial and/or region in aws config file:")
 	}
-
 }
 
 type STSGetSessionTokenAPI interface {
@@ -41,7 +40,7 @@ func GetSessionToken(c context.Context, api STSGetSessionTokenAPI, input *sts.Ge
 	return api.GetSessionToken(c, input)
 }
 
-func openAndReadFile(path string) []byte {
+func openAndReadFile(path string) []string {
 	file, err := os.Open(path)
 	if err != nil {
 		panic("Could not open file:" + err.Error())
@@ -51,14 +50,13 @@ func openAndReadFile(path string) []byte {
 	if err != nil {
 		panic("Could not read file:" + err.Error())
 	}
-	return input
+	return strings.Split(string(input), "\n")
 }
 
-func generateCredentialsText(path, temporaryCredentials string) []string {
-	input := openAndReadFile(path)
-	lines := strings.Split(string(input), "\n")
+func generateCredentialsText(lines []string, response *sts.GetSessionTokenOutput) []string {
 	updatedLines := make([]string, 0)
 	existingCredentialsIndex := 0
+	temporaryCredentials := generateTemporaryCredentials(response)
 
 	// check for existing credentials
 	for i, line := range lines {
@@ -66,7 +64,6 @@ func generateCredentialsText(path, temporaryCredentials string) []string {
 			existingCredentialsIndex = i
 		}
 	}
-
 	// if the credentials exist, replace them entirely
 	if existingCredentialsIndex != 0 {
 		for i, line := range lines {
@@ -76,11 +73,10 @@ func generateCredentialsText(path, temporaryCredentials string) []string {
 		}
 		updatedLines[existingCredentialsIndex] = temporaryCredentials
 	} else {
-		// otherwise set them
+		// otherwise set the credentials
 		updatedLines = append(updatedLines, lines...)
 		updatedLines = append(updatedLines, temporaryCredentials)
 	}
-
 	return updatedLines
 }
 
@@ -93,10 +89,8 @@ func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
 	return temporaryCredentials
 }
 
-func findValueInFile(path, value string) string {
+func findValueInFile(lines []string, value string) string {
 	var match string
-	input := openAndReadFile(path)
-	lines := strings.Split(string(input), "\n")
 
 	for _, line := range lines {
 		if strings.Contains(line, value) {
@@ -127,15 +121,19 @@ func main() {
 	durationSeconds := flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid")
 	flag.Parse()
 
+	// read AWS credentials file
+	awsCredentialsLines := openAndReadFile(*credentialsFile)
+
 	// obtain required values from AWS config file
 	awsConfig := AWSConfig{}
-	awsConfig.initConfigValues(configFile)
+	awsConfigLines := openAndReadFile(*configFile)
+	awsConfig.initConfigValues(awsConfigLines)
 
 	// check for existing expiration value
 	// if temporary credentials have expired, fetch 2FA code from stdin
 	// otherwise, print that the credentials have not expired and exit
 	var tokenCode string
-	expiration := findValueInFile(*credentialsFile, "aws_token_expiration")
+	expiration := findValueInFile(awsCredentialsLines, "aws_token_expiration")
 	if len(expiration) > 0 {
 		now := time.Now()
 		parsedExpiration, err := time.Parse(time.RFC3339, expiration)
@@ -170,9 +168,8 @@ func main() {
 		panic("Could not get session token:" + err.Error())
 	}
 
-	temporaryCredentials := generateTemporaryCredentials(response)
-	lines := generateCredentialsText(*credentialsFile, temporaryCredentials)
-	output := strings.Join(lines, "\n")
+	credentialsText := generateCredentialsText(awsCredentialsLines, response)
+	output := strings.Join(credentialsText, "\n")
 
 	err = ioutil.WriteFile(*credentialsFile, []byte(output), 0644)
 	if err != nil {
