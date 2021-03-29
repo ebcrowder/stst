@@ -57,7 +57,7 @@ Duration in seconds that temporary credentials should remain valid (default 900)
 If the user's temporary credentials have expired or do not exist:
 ```bash
 $ stst
-Please enter your 2FA Code: 123456
+Please enter your MFA Code: 123456
 Successfully authenticated with AWS STS and updated the AWS credentials file at: /home/user/.aws/credentials
 ```
 If the user's current temporary credentials are valid:

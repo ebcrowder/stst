@@ -104,7 +104,7 @@ func findValueInFile(lines []string, value string) string {
 
 func getTokenCodeFromStdIn() string {
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("Please enter your 2FA Code: ")
+	fmt.Print("Please enter your MFA Code: ")
 	tokenCode, _ := reader.ReadString('\n')
 	tokenCode = strings.TrimSuffix(tokenCode, "\n")
 	return tokenCode
@@ -131,7 +131,7 @@ func main() {
 	awsConfig.initConfigValues(awsConfigLines)
 
 	// check for existing expiration value
-	// if temporary credentials have expired, fetch 2FA code from stdin
+	// if temporary credentials have expired, fetch MFA code from stdin
 	// otherwise, print that the credentials have not expired and exit
 	var tokenCode string
 	expiration := findValueInFile(awsCredentialsLines, "aws_token_expiration")
