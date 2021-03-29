@@ -144,7 +144,7 @@ func main() {
 		if now.After(parsedExpiration) {
 			tokenCode = getTokenCodeFromStdIn()
 		} else {
-			fmt.Print("Temporary credentials have not expired and remain valid.")
+			fmt.Print("Temporary credentials have not expired and remain valid.\n")
 			return
 		}
 	} else {
@@ -176,4 +176,5 @@ func main() {
 	if err != nil {
 		panic("Could not write to aws credentials file:" + err.Error())
 	}
+	fmt.Print("Successfully authenticated with AWS STS and updated the AWS credentials file at: ", awsDir+"credentials\n")
 }
