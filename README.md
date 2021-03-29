@@ -33,7 +33,8 @@ If you are using the AWS SDK, the `temp` profile will need to be specified progr
 ## Prerequisites
 - An AWS account (root or IAM) that possesses an IAM policy requiring MFA on all or specific AWS services.
 - An AWS `config` and `credentials` file. See [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) for further information.
-- The AWS `config` file should specify the `region` and `mfa_serial` of your IAM user's MFA device.
+- The AWS `config` file should specify the `region` and `mfa_serial` values.
+- Go 1.15+
 ## Installation
 Clone this repo and then run:
 ```bash
