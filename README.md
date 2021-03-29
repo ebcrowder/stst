@@ -65,3 +65,9 @@ If the user's current temporary credentials are valid:
 $ stst
 Temporary credentials have not expired and remain valid.
 ```
+## Tests
+```bash
+$ go test
+PASS
+ok  	github.com/ebcrowder/stst/v2	0.002s
+```
