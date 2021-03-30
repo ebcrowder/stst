@@ -53,14 +53,14 @@ func openAndReadFile(path string) []string {
 	return strings.Split(string(input), "\n")
 }
 
-func generateCredentialsText(lines []string, response *sts.GetSessionTokenOutput) []string {
+func generateCredentialsText(profile string, lines []string, response *sts.GetSessionTokenOutput) []string {
 	updatedLines := make([]string, 0)
 	existingCredentialsIndex := 0
-	temporaryCredentials := generateTemporaryCredentials(response)
+	temporaryCredentials := generateTemporaryCredentials(profile, response)
 
 	// check for existing credentials
 	for i, line := range lines {
-		if strings.Contains(line, "[temp]") {
+		if strings.Contains(line, profile) {
 			existingCredentialsIndex = i
 		}
 	}
@@ -81,8 +81,8 @@ func generateCredentialsText(lines []string, response *sts.GetSessionTokenOutput
 	return updatedLines
 }
 
-func generateTemporaryCredentials(response *sts.GetSessionTokenOutput) string {
-	temporaryCredentials := "[temp]\n" +
+func generateTemporaryCredentials(profile string, response *sts.GetSessionTokenOutput) string {
+	temporaryCredentials := "[" + profile + "]\n" +
 		"aws_access_key_id" + " = " + *response.Credentials.AccessKeyId + "\n" +
 		"aws_secret_access_key" + " = " + *response.Credentials.SecretAccessKey + "\n" +
 		"aws_security_token" + " = " + *response.Credentials.SessionToken + "\n" +
@@ -117,9 +117,10 @@ func main() {
 		panic("User home directory could not be determined:, " + err.Error())
 	}
 	awsDir := userHomeDir + "/.aws/"
-	credentialsFile := flag.String("credentials", awsDir+"credentials", "Path to aws credentials file")
-	configFile := flag.String("config", awsDir+"config", "Path to aws config file")
-	durationSeconds := flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid")
+	credentialsFile := flag.String("credentials", awsDir+"credentials", "Path to aws credentials file.")
+	configFile := flag.String("config", awsDir+"config", "Path to aws config file.")
+	profile := flag.String("profile", "temp", "Profile name used to associate temporary credentials.")
+	durationSeconds := flag.Int("duration", 900, "Duration in seconds that temporary credentials should remain valid.")
 	flag.Parse()
 
 	// read AWS credentials file
@@ -169,7 +170,7 @@ func main() {
 		panic("Could not get session token:" + err.Error())
 	}
 
-	credentialsText := generateCredentialsText(awsCredentialsLines, response)
+	credentialsText := generateCredentialsText(*profile, awsCredentialsLines, response)
 	output := strings.Join(credentialsText, "\n")
 
 	err = ioutil.WriteFile(*credentialsFile, []byte(output), 0644)

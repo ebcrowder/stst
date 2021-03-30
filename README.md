@@ -10,11 +10,10 @@ aws_access_key_id = accessKeyId
 aws_secret_access_key = secretAccessKey
 aws_security_token = sessionToken
 aws_token_expiration = 2020-01-01T00:00:00Z
-
 ```
-If the `[temp]` entry does not already exist in the `credentials` file, the tool will create it. On subsequent runs, the tool will update the entry in place. 
+If the `profile` entry does not already exist in the `credentials` file, the tool will create it. On subsequent runs, the tool will update the entry in place.
 
-At which point, you can invoke the AWS CLI by specifying the appropriate profile (`temp` in this case) by doing the following:
+At which point, you can invoke the AWS CLI by specifying the appropriate profile (`temp` in this example) by doing the following:
 ```bash
 $ aws iam get-user --profile temp
 
@@ -29,7 +28,7 @@ $ aws iam get-user --profile temp
     }
 }
 ```
-If you are using the AWS SDK, the `temp` profile will need to be specified programmatically using the methods for the particular SDK being utilized.
+If you are using the AWS SDK, the profile name will need to be specified programmatically using the methods for the particular SDK being utilized.
 ## Prerequisites
 - An AWS account (root or IAM) that possesses an IAM policy requiring MFA on all or specific AWS services.
 - An AWS `config` and `credentials` file. See [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html) for further information.
@@ -48,20 +47,22 @@ $ stst --help
 
 Usage of stst:
 -config string
-Path to aws config file (default "/home/user/.aws/config")
+Path to aws config file (default "/home/$USER/.aws/config")
 -credentials string
-Path to aws credentials file (default "/home/user/.aws/credentials")
+Path to aws credentials file (default "/home/$USER/.aws/credentials")
 -duration int
 Duration in seconds that temporary credentials should remain valid (default 900)
+-profile string
+Profile name used to associate temporary credentials. (default "temp")
 ```
 ### Authenticate with AWS
-If the user's temporary credentials have expired or do not exist:
+If the temporary credentials have expired or do not exist:
 ```bash
 $ stst
 Please enter your MFA Code: 123456
-Successfully authenticated with AWS STS and updated the AWS credentials file at: /home/user/.aws/credentials
+Successfully authenticated with AWS STS and updated the AWS credentials file at: /home/$USER/.aws/credentials
 ```
-If the user's current temporary credentials are valid:
+If the current temporary credentials are valid:
 ```bash
 $ stst
 Temporary credentials have not expired and remain valid.

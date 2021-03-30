@@ -65,6 +65,7 @@ func TestGenerateCredentialsText(t *testing.T) {
 		t.Error(err)
 	}
 
+	profile := "temp"
 	lines := []string{
 		"[default]",
 		"aws_access_key_id = accessKeyId",
@@ -84,7 +85,7 @@ func TestGenerateCredentialsText(t *testing.T) {
 		"",
 	}
 
-	credentialsText := generateCredentialsText(lines, response)
+	credentialsText := generateCredentialsText(profile, lines, response)
 
 	got := strings.Join(credentialsText, "\n")
 	want := strings.Join(wantedLines, "\n")
