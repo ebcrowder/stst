@@ -20,6 +20,12 @@ type AWSConfig struct {
 	region    string
 }
 
+type STSGetSessionTokenAPI interface {
+	GetSessionToken(ctx context.Context,
+		params *sts.GetSessionTokenInput,
+		optFns ...func(*sts.Options)) (*sts.GetSessionTokenOutput, error)
+}
+
 func (c *AWSConfig) initConfigValues(awsConfigLines []string) {
 	mfaSerial := findValueInFile(awsConfigLines, "mfa_serial")
 	region := findValueInFile(awsConfigLines, "region")
@@ -28,12 +34,6 @@ func (c *AWSConfig) initConfigValues(awsConfigLines []string) {
 	if len(c.mfaSerial) == 0 || len(c.region) == 0 {
 		panic("Could not locate mfa_serial and/or region in aws config file:")
 	}
-}
-
-type STSGetSessionTokenAPI interface {
-	GetSessionToken(ctx context.Context,
-		params *sts.GetSessionTokenInput,
-		optFns ...func(*sts.Options)) (*sts.GetSessionTokenOutput, error)
 }
 
 func GetSessionToken(c context.Context, api STSGetSessionTokenAPI, input *sts.GetSessionTokenInput) (*sts.GetSessionTokenOutput, error) {
@@ -127,8 +127,8 @@ func main() {
 	awsCredentialsLines := openAndReadFile(*credentialsFile)
 
 	// obtain required values from AWS config file
-	awsConfig := AWSConfig{}
 	awsConfigLines := openAndReadFile(*configFile)
+	awsConfig := AWSConfig{}
 	awsConfig.initConfigValues(awsConfigLines)
 
 	// check for existing expiration value
