@@ -15,15 +15,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
-type AWSConfig struct {
-	mfaSerial string
-	region    string
-}
-
 type STSGetSessionTokenAPI interface {
 	GetSessionToken(ctx context.Context,
 		params *sts.GetSessionTokenInput,
 		optFns ...func(*sts.Options)) (*sts.GetSessionTokenOutput, error)
+}
+
+type AWSConfig struct {
+	mfaSerial string
+	region    string
 }
 
 func (c *AWSConfig) initConfigValues(awsConfigLines []string) {
